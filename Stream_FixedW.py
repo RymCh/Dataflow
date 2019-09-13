@@ -1,9 +1,6 @@
 # env
 import apache_beam as beam
-from apache_beam.io import ReadFromText
-from google.cloud import pubsub_v1
 import argparse
-import datetime
 import json
 import logging
 import apache_beam.transforms.window as window
@@ -13,26 +10,17 @@ from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.options.pipeline_options import GoogleCloudOptions
 # from apache_beam.io import WriteToText
-# -----------------------------------run-------------------------------------
 
+
+# ---------------------------------- PrintFn Class -------------------------#
 
 class PrintFn(beam.DoFn):
     def process(self, element):
-        print('*****************')
+        print('****************')
         print(element)
         return [element]
+# ------------------------------------run------------------------------------#
 
-'''class DoFnRim(beam.DoFn):
-    """ # The DoFn to perform on each element in the input PCollection. """
-
-    def process(self, element):
-        if DATAFLOW_RUNNER:
-            logging.error(type(element))
-            logging.error(element)
-        else:
-            print(type(element))
-            print(element)
-        return [len(element)]'''
 
 def run(argv=None):
     # Use Python argparse module to parse custom arguments
@@ -76,24 +64,14 @@ def run(argv=None):
         | 'decode' >> beam.Map(lambda x: x.decode('utf-8')) \
         | 'jsonload' >> beam.Map(lambda x: json.loads(x))
 
-    # |'rim pardo' >> beam.ParDo(DoFnRim())
-    #   | 'window' >> beam.WindowInto(window.FixedWindows(10)) \
-    # count = lines | 'Count' >> (beam.CombineGlobally(beam.combiners.CountCombineFn()).without_defaults())
 
-#----- window fixe de 40 sec ------#
+# ----- window fixe de 40 sec ------ #
+
+
     nbr_articles = lines | 'window' >> beam.WindowInto(window.FixedWindows(40)) \
         | 'CountGlobally' >> beam.CombineGlobally(beam.combiners.CountCombineFn()).without_defaults() \
         | 'printnbrarticles' >> beam.ParDo(PrintFn())
 
-    # nbr_articles = lines | 'Count' >> (
-    #   beam.CombineGlobally(
-    #      beam.combiners.CountCombineFn()
-    #      ).without_defaults()
-    # )
-    # print_na = nbr_articles |'print2' >> beam.ParDo(PrintFn2())
-    #  .without_defaults())
-    # how many fields in each dictionary of my pcollection
-    #   fields = lines | beam.Map(lambda x: len(x)
 
     lines | 'jsondumps' >> beam.Map(lambda x: json.dumps(x)) \
         | 'encode' >> beam.Map(lambda x: x.encode('utf-8')) \
@@ -101,7 +79,6 @@ def run(argv=None):
 
     p.run().wait_until_finish()
 
-# ------------------------------------run------------------------------------#
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)

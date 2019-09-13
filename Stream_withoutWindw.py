@@ -10,15 +10,16 @@ from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.options.pipeline_options import GoogleCloudOptions
 
+# ----------------------------- PrintFn Class -----------------------------#
 
-# ---------------------------------- PrinFn Class ----------------------------#
+
 class PrintFn(beam.DoFn):
     def process(self, element):
         print('*****************')
         print(element)
         return [element]
 
-# -----------------------------------run-------------------------------------#
+# -----------------------------------run------------------------------------- #
 
 
 def run(argv=None):
@@ -58,21 +59,16 @@ def run(argv=None):
     )
     p = beam.Pipeline(options=p_options)
 
-    # Read from PubSub into a PCollection.
     lines = p | 'receive_data' >> beam.io.ReadFromPubSub(
         subscription=known_args.in_topic).with_input_types(str) \
         | 'decode' >> beam.Map(lambda x: x.decode('utf-8')) \
         | 'jsonload' >> beam.Map(lambda x: json.loads(x))
 
-# -------------------window glissant ------------------- #
+# ------------------------------ global window  ----------------------------- #
 
-    lines | 'window' >> (
-        beam.WindowInto(window.SlidingWindows(50, 20))
-    )\
-        | 'Count' >> beam.CombineGlobally(
-            (beam.combiners.CountCombineFn()).without_defaults()
-        )\
-        | 'printnbrarticles' >> beam.ParDo(PrintFn())
+    Nb_items = lines | 'window' >> beam.WindowInto(window.GlobalWindows()) \
+        | 'CountGlobally' >> beam.combiners.Count.Globally() \
+        | 'print' >> beam.ParDo(PrintFn())
 
     lines | 'jsondumps' >> beam.Map(lambda x: json.dumps(x)) \
         | 'encode' >> beam.Map(lambda x: x.encode('utf-8')) \
