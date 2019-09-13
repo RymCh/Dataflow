@@ -1,0 +1,6 @@
+gcloud confing set project smartlive
+(venv) chattiriim@cloudshell:~$ source venv/bin/activate
+cd home/Project_Auchan/
+python dataflow.python
+python ./dataflow.py --network 'test' --input_topic 'projects/smartlive/subscriptions/sub1' 
+--output_topic 'projects/smartlive/topics/topic2' 
