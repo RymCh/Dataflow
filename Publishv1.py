@@ -1,5 +1,4 @@
 from google.cloud import pubsub_v1
-import time
 project_id = "smartlive"
 topic_name = "topic1"
 publisher = pubsub_v1.PublisherClient()

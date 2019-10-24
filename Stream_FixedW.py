@@ -9,6 +9,8 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.options.pipeline_options import GoogleCloudOptions
+from datetime import datetime
+
 # from apache_beam.io import WriteToText
 
 
@@ -19,6 +21,12 @@ class PrintFn(beam.DoFn):
         print('****************')
         print(element)
         return [element]
+
+# ------------------------------------Timestamp------------------------------------#
+def get_timestamp(data):
+    my_date = (data['timestamp']) # date : 2010-09-18......string
+    times = datetime.fromisoformat(my_date) #type: datetime.datetime
+    return beam.window.TimestampedValue(data, datetime.timestamp(times))
 # ------------------------------------run------------------------------------#
 
 
@@ -65,10 +73,11 @@ def run(argv=None):
         | 'jsonload' >> beam.Map(lambda x: json.loads(x))
 
 
-# ----- window fixe de 40 sec ------ #
+# ----- window fixe de 20 secondes  ------ #
 
 
-    nbr_articles = lines | 'window' >> beam.WindowInto(window.FixedWindows(40)) \
+    nbr_articles = lines| 'timestamp' >> beam.Map(get_timestamp) \
+        | 'window' >>  beam.WindowInto(window.FixedWindows(10)) \
         | 'CountGlobally' >> beam.CombineGlobally(beam.combiners.CountCombineFn()).without_defaults() \
         | 'printnbrarticles' >> beam.ParDo(PrintFn())
 

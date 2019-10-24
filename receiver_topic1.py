@@ -18,6 +18,7 @@ subscription_path = subscriber.subscription_path(
 
 def callback(message):
     print('Received message: {}'.format(message.publish_time))
+    # publish_time: el wakt eli baathna fih les données f topic1
     message.ack()
 
 

@@ -9,9 +9,20 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.options.pipeline_options import GoogleCloudOptions
+from datetime import datetime
+
+# ------------------------------------Timestamp------------------------------------#
+
+
+def get_timestamp(data):
+    my_date = (data['timestamp']) # date : 2010-09-18......string
+    times = datetime.fromisoformat(my_date) #type: datetime.datetime
+    return beam.window.TimestampedValue(data, datetime.timestamp(times))
 
 
 # ---------------------------------- PrinFn Class ----------------------------#
+
+
 class PrintFn(beam.DoFn):
     def process(self, element):
         print('*****************')
@@ -49,7 +60,8 @@ def run(argv=None):
     )'''
     google_cloud_options.staging_location = 'gs://rim-bucket/binaries'
     google_cloud_options.temp_location = 'gs://rim-bucket/temp'
-
+    # Local execution we set the runner as "DirectRunner"
+    # Cloud execution we set the runner as "DataflowRunner"
     p_options.view_as(StandardOptions).runner = 'DirectRunner'
     p_options.view_as(SetupOptions).save_main_session = True
     p_options.view_as(StandardOptions).streaming = True
@@ -64,24 +76,21 @@ def run(argv=None):
         | 'decode' >> beam.Map(lambda x: x.decode('utf-8')) \
         | 'jsonload' >> beam.Map(lambda x: json.loads(x))
 
+
 # -------------------window glissant ------------------- #
 
-    lines | 'window' >> (
-        beam.WindowInto(window.SlidingWindows(50, 20))
-    )\
-        | 'Count' >> beam.CombineGlobally(
-            (beam.combiners.CountCombineFn()).without_defaults()
-        )\
+    lines| 'timestamp' >> beam.Map(get_timestamp) \
+        | 'window' >>  beam.WindowInto(window.SlidingWindows(20, 10)) \
+        | 'Count' >> beam.CombineGlobally(beam.combiners.CountCombineFn()).without_defaults()\
         | 'printnbrarticles' >> beam.ParDo(PrintFn())
 
     lines | 'jsondumps' >> beam.Map(lambda x: json.dumps(x)) \
         | 'encode' >> beam.Map(lambda x: x.encode('utf-8')) \
         | 'send_to_Pub/Sub' >> beam.io.WriteToPubSub(known_args.out_topic)
-
+    
     p.run().wait_until_finish()
 
 # ------------------------------------run------------------------------------#
-
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
